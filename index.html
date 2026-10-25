@@ -377,28 +377,34 @@ async function act1(){
 // Puzzle 1 (The Evil Within): las cosas del salón se mueven en un orden; hay que repetirlo con la mirada. El último paso es la ventana… y ella.
 async function simon(){
   const O={radio:dirOf(-75,-8),mecedora:dirOf(95,-22),reloj:dirOf(-115,5),ventana:dirOf(-170,0)};
-  const CUE={radio:(k=1)=>{ const st=play('estatica',0.6*k,O.radio,2.5); setTimeout(()=>{ try{st&&st.stop();}catch(e){} },1400); },
-    mecedora:(k=1)=>creak(O.mecedora,0,1.0*k), reloj:()=>bell(O.reloj), ventana:(k=1)=>knockGlass(O.ventana,3,0.7*k)};
+  const CUE={radio:(k=1)=>{ const st=play('estatica',0.7*k,O.radio,2.5); setTimeout(()=>{ try{st&&st.stop();}catch(e){} },1400); },
+    mecedora:(k=1)=>creak(O.mecedora,0,1.1*k), reloj:()=>bell(O.reloj), ventana:(k=1)=>knockGlass(O.ventana,3,0.8*k)};
   const SEQ=['radio','mecedora','reloj','ventana'];
-  await say('n03'); await wait(0.8);
-  let fails=0;
-  for(;;){
-    beat('Puzzle · el orden (se muestra)');
-    for(const k of SEQ){ glow(O[k],1.6,1.3); CUE[k](); await wait(2.4); }
-    await wait(0.4); await say('n04');
-    let i=0, ok=true;
-    while(true){
-      const want=SEQ[i];
-      const got=await waitDwell(O,0.7,20,16,'Puzzle · toca mirar: '+want);
-      if(got===null){ glow(O[want],1.4,1.2,0.6); CUE[want](0.8); continue; }
-      if(got===want){ glow(O[got],1.0,1.0,0.9); if(want==='ventana') break; CUE[got](0.6); chime(null,1+i*0.12); i++; if(i===3) say('n06').catch(()=>{}); await wait(0.4); continue; }
-      if(i>0 && got===SEQ[i-1]) continue;
-      ok=false; break;
-    }
-    if(ok) break;
-    fails++; play('aporreo',1.0,dirOf(15,0),3); play('grave2',0.5); await wait(0.8); await say('n05'); await wait(0.4);
-    if(fails>=2){ await waitDwell({v:O.ventana},0.6,30,22,'Puzzle · la ventana'); break; }
+  await say('n03'); await wait(0.5);
+  // 1) Demostración guiada: cada objeto suena y brilla, y no se pasa al siguiente hasta que lo has mirado
+  for(const k of SEQ.slice(0,3)){
+    beat('Puzzle · demostración: '+k); let nx=0; const t=performance.now();
+    await until(()=>{ const n=performance.now(); if(n>=nx){ nx=n+3200; CUE[k](); glow(O[k],2.2,1.6,1); } return lookingDir(O[k],20)||n-t>25000; },'Puzzle · demostración: '+k,'');
+    glow(O[k],1.6,1.8,1); CUE[k](); await wait(1.8);
   }
+  await wait(0.5); await say('n04');
+  // 2) Repetición: si dudas o te equivocas, el siguiente objeto te da una pista (suena y brilla); nunca vuelve a empezar
+  let i=0, scolded=false;
+  while(i<3){
+    const want=SEQ[i], others={}; for(const k in O) if(k!==want && !(i>0 && k===SEQ[i-1])) others[k]=O[k];
+    // espera a que mire el que toca o uno equivocado; mirar el anterior no cuenta. Cada 5 s, pista del que toca.
+    let got=null, cand=null, acc=0, last=performance.now(), nh=last+5000;
+    await until(()=>{ const n=performance.now(); let hit=null; if(lookingDir(O[want],18)) hit=want; else for(const k in others) if(lookingDir(others[k],16)) hit=k;
+      if(hit&&hit===cand) acc+=n-last; else { cand=hit; acc=0; } last=n;
+      if(n>=nh){ nh=n+5000; glow(O[want],2.0,1.6,1); CUE[want](); }
+      if(cand&&acc>=600){ got=cand; return true; } return false; },'Puzzle · toca mirar: '+want,'');
+    if(got===want){ glow(O[got],1.0,1.2,1); CUE[got](0.6); chime(null,1+i*0.12); i++; if(i===3) say('n06').catch(()=>{}); await wait(0.5); continue; }
+    if(!scolded){ scolded=true; play('aporreo',0.9,dirOf(15,0),3); await wait(0.6); await say('n05'); }
+    glow(O[want],2.0,1.6,1); CUE[want]();
+  }
+  // 3) La ventana: llaman al cristal hasta que la miras… y está ella
+  await wait(1.2); beat('Puzzle · la ventana'); { let nx=0; const t=performance.now();
+    await until(()=>{ const n=performance.now(); if(n>=nx){ nx=n+3500; knockGlass(O.ventana,3,0.8); } return lookingDir(O.ventana,22)||n-t>30000; },'Puzzle · toca mirar: ventana',''); }
   beat('La mujer golpea el cristal'); scare(0.9); play('susurro_grito',0.8,O.ventana,3); await runClip('A1-ventana-cara'); await wait(0.6); hideClip('A1-ventana-cara',0.1);
 }
 async function act2(){
