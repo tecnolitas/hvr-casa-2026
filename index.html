@@ -90,7 +90,7 @@ const CLIPS={
 "C-pareja":["pasillo_a",115,18,58,[1.057,1.1,1.14]],
 "B-detras":["bano_a",-88,0,72,[1.122,1.086,1.102]]};
 const SCENES=["salon_a","dormitorio_a","pasillo_a","bano_a"];
-const SOUNDS=["ambiente","susto","chirrido","respiro","subida","chispazo","golpe","golpe2","aporreo","trueno","rayo","lluvia","chimenea","nevera","maligno","drone","reloj","mecedora","estatica","electrico","unas","unas2","gorgoteo","insecto","llanto","llanto2","risa","chirrido_metal","oleada","grave","grave2","impacto","susurro_grito","silbato","exhala","cajamusica","h1","h2","h3","h4","h5","h6","h7","b1","b2","b3","b4",...Array.from({length:23},(_,i)=>"n"+String(i+1).padStart(2,"0"))];
+const SOUNDS=["ambiente","susto","chirrido","respiro","subida","chispazo","golpe","golpe2","aporreo","trueno","rayo","lluvia","chimenea","nevera","maligno","drone","reloj","mecedora","estatica","electrico","unas","unas2","gorgoteo","insecto","llanto","llanto2","risa","chirrido_metal","oleada","grave","grave2","impacto","susurro_grito","silbato","exhala","cajamusica","h1","h2","h3","h4","h5","h6","h7","b1","b2","b3","b4",...Array.from({length:27},(_,i)=>"n"+String(i+1).padStart(2,"0"))];
 const D2R=Math.PI/180;
 function dirOf(yaw,pitch){ const y=yaw*D2R,p=pitch*D2R; return new THREE.Vector3(Math.sin(y)*Math.cos(p),Math.sin(p),-Math.cos(y)*Math.cos(p)); }
 
@@ -199,7 +199,7 @@ const live=new Set();
 function pos(dir,dist=3,ref=1.2,life=12){ const o=new THREE.Object3D(); o.position.copy(dir).multiplyScalar(dist); scene.add(o);
   const pa=new THREE.PositionalAudio(listener); pa.setRefDistance(ref); pa.setRolloffFactor(1.2); o.add(pa); const inp=ctx.createGain(); pa.setNodeSource(inp);
   const rec={o,inp,pa}; live.add(rec); setTimeout(()=>{ try{inp.disconnect();pa.disconnect();}catch(e){} scene.remove(o); live.delete(rec); },life*1000); return rec; }
-const GAIN={lluvia:1.6,chimenea:1.4,nevera:1.5,maligno:1.2,drone:1.2,estatica:1.8,reloj:1.0,mecedora:4.5,cajamusica:1.6,llanto:1.7,electrico:1.8,trueno:1.6,rayo:1.5,golpe:1.4,golpe2:1.4,impacto:1.4,aporreo:1.2,unas:1.3,unas2:1.3,gorgoteo:1.3,risa:1.2,ambiente:0.3,h1:1.2,h2:0.9,h3:1.0,h4:1.2,h5:1.1,h6:1.1,h7:1.3,b1:0.9,b2:0.8,b3:0.8,b4:0.6}; for(let i=1;i<=23;i++) GAIN['n'+String(i).padStart(2,'0')]=1.5;
+const GAIN={lluvia:1.6,chimenea:1.4,nevera:1.5,maligno:1.2,drone:1.2,estatica:1.8,reloj:1.0,mecedora:4.5,cajamusica:1.6,llanto:1.7,electrico:1.8,trueno:1.6,rayo:1.5,golpe:1.4,golpe2:1.4,impacto:1.4,aporreo:1.2,unas:1.3,unas2:1.3,gorgoteo:1.3,risa:1.2,ambiente:0.3,h1:1.2,h2:0.9,h3:1.0,h4:1.2,h5:1.1,h6:1.1,h7:1.3,b1:0.9,b2:0.8,b3:0.8,b4:0.6}; for(let i=1;i<=27;i++) GAIN['n'+String(i).padStart(2,'0')]=1.5;
 function play(n,vol=1,dir=null,dist=3,rate=1){ if(!buf[n]) return null; let a;
   if(dir){ a=new THREE.PositionalAudio(listener); a.setRefDistance(1.5); const o=new THREE.Object3D(); o.position.copy(dir).multiplyScalar(dist); scene.add(o); o.add(a); a.onEnded=()=>{ scene.remove(o); }; }
   else a=new THREE.Audio(listener);
@@ -355,57 +355,62 @@ setTimeout(()=>movers.push({until:Infinity,f(){ if(U.fl.value>0) U.ld.value.copy
 // ---------- Guion ----------
 const ACTS=[act1,act2,act3,act4,act5]; let actIdx=0, t0=0;
 async function act1(){
-  resetScene('salon_a',-165); ambience(0.55,[['lluvia',0.45,dirOf(-170,0),4],['reloj',0.5,dirOf(-115,5),3]]); setTimeout(()=>{ if(actIdx===0) play('rayo',0.7); },9000);
+  resetScene('salon_a',-165); ambience(0.55,[['lluvia',0.45,dirOf(-170,0),4]]); setTimeout(()=>{ if(actIdx===0) play('rayo',0.7); },7000);
   await fadeB(1,3); beat('Acto 1 · El salón');
-  await wait(6); await say('n01'); await wait(5);
-  beat('La radio se enciende sola'); radio(dirOf(-75,-8),18); { const st=play('estatica',0.35,dirOf(-75,-8),2.5); setTimeout(()=>{ try{st&&st.stop();}catch(e){} },18000); } await runClip('A1-radio');
-  await wait(2); await say('n02'); await wait(4);
-  await waitAway('A1-mecedora',3,'Esperando a que no mires la mecedora','La mecedora está a tu derecha. Mírala y luego aparta la vista unos segundos.');
-  beat('La mecedora se mece sola'); await runLoop('A1-mecedora',()=>lookedFor('A1-mecedora',1.2),30,'La mecedora cruje a tu derecha… mírala.',{times:[0.05,1.6,3.1,4.05,5.0,5.95,6.9,8.4],fn:(i,n)=>creak(dirOf(95,-22),n,[1,0.55][i%2])});
-  await wait(5);
+  await wait(4); await say('n01'); await wait(2);
+  beat('La radio se enciende sola'); radio(dirOf(-75,-8),14); { const st=play('estatica',0.35,dirOf(-75,-8),2.5); setTimeout(()=>{ try{st&&st.stop();}catch(e){} },14000); } await runClip('A1-radio');
+  await wait(1); await say('n02'); await wait(1.5);
   await waitLook('A1-ventana',25,'Esperando a que mires la ventana','Mira la ventana (detrás de ti, a la izquierda).');
   beat('Una silueta pasa por fuera'); play('oleada',0.7,dirOf(-170,0),3); setTimeout(()=>play('trueno',0.6),900); await runClip('A1-ventana'); hideClip('A1-ventana',0.6);
-  await wait(4);
-  await simon();
-  await wait(7);
-  await waitAway('A1-puerta',4,'Esperando a que estés de espaldas a las puertas','Gírate de espaldas a las dos puertas y espera.');
-  beat('Susto 1 · la puerta'); play('chirrido',1,dirOf(15,0),4); showClip('A1-puerta',{fromStill:true});
-  await waitLook('A1-puerta',22,'Esperando a que te gires hacia la puerta','Algo ha sonado detrás de ti… gírate.');
-  play('respiro',0.6); await wait(0.7); setTimeout(()=>scare(1),550); await runClip('A1-puerta',{rate:1.2});
+  await wait(2.5);
+  await suCamino();
   await fadeB(0,0.8); await wait(0.8); hideClip('A1-puerta',0.01); rumble(); await wait(2.5); await say('n07'); await wait(1);
 }
-// Puzzle 1 (The Evil Within): las cosas del salón se mueven en un orden; hay que repetirlo con la mirada. El último paso es la ventana… y ella.
-async function simon(){
-  const O={radio:dirOf(-75,-8),mecedora:dirOf(95,-22),reloj:dirOf(-115,5),ventana:dirOf(-170,0)};
+// Puzzle del salón: "su camino". Cada cosa que se mueve es un paso suyo; hay que repetirlo contrarreloj.
+// Susto 1 en plena concentración (la ventana, a la espalda). Susto 2 al final del camino (la puerta, detrás).
+async function suCamino(){
+  const O={radio:dirOf(-75,-8),mecedora:dirOf(95,-22),reloj:dirOf(-115,5)};
   const CUE={radio:(k=1)=>{ const st=play('estatica',0.7*k,O.radio,2.5); setTimeout(()=>{ try{st&&st.stop();}catch(e){} },1400); },
-    mecedora:(k=1)=>creak(O.mecedora,0,1.1*k), reloj:()=>bell(O.reloj), ventana:(k=1)=>knockGlass(O.ventana,3,0.8*k)};
-  const SEQ=['radio','mecedora','reloj','ventana'];
-  await say('n03'); await wait(0.5);
-  // 1) Demostración guiada: cada objeto suena y brilla, y no se pasa al siguiente hasta que lo has mirado
-  for(const k of SEQ.slice(0,3)){
-    beat('Puzzle · demostración: '+k); let nx=0; const t=performance.now();
-    await until(()=>{ const n=performance.now(); if(n>=nx){ nx=n+3200; CUE[k](); glow(O[k],2.2,1.6,1); } return lookingDir(O[k],20)||n-t>25000; },'Puzzle · demostración: '+k,'');
-    glow(O[k],1.6,1.8,1); CUE[k](); await wait(1.8);
+    mecedora:(k=1)=>creak(O.mecedora,0,1.1*k), reloj:()=>bell(O.reloj)};
+  const SEQ=['radio','mecedora','reloj']; let rocking=true;
+  await say('n27'); await wait(0.3);
+  // Demostración guiada: cada paso suena y brilla hasta que lo miras
+  for(const k of SEQ){
+    let nx=0; const t=performance.now();
+    await until(()=>{ const n=performance.now(); if(n>=nx){ nx=n+3200; CUE[k](); glow(O[k],2.2,1.6,1); } return lookingDir(O[k],20)||n-t>25000; },'Puzzle · su camino (demostración): '+k,'');
+    if(k==='mecedora'){ runLoop('A1-mecedora',()=>!rocking,900,'').catch(()=>{}); } glow(O[k],1.6,1.8,1); CUE[k](); await wait(1.8);
   }
-  await wait(0.5); await say('n04');
-  // 2) Repetición: si dudas o te equivocas, el siguiente objeto te da una pista (suena y brilla); nunca vuelve a empezar
-  let i=0, scolded=false;
-  while(i<3){
-    const want=SEQ[i], others={}; for(const k in O) if(k!==want && !(i>0 && k===SEQ[i-1])) others[k]=O[k];
-    // espera a que mire el que toca o uno equivocado; mirar el anterior no cuenta. Cada 5 s, pista del que toca.
+  await say('n04');
+  // Contrarreloj: tictac que se acelera y latido
+  let tickT=performance.now(), tickGap=700, alive=true; const clk=dirOf(-115,5);
+  movers.push({until:Infinity,f(){ if(!alive){ this.until=0; return; } const n=performance.now(); if(n>=tickT){ tick(clk); tickT=n+tickGap; tickGap=Math.max(180,tickGap*0.975); } }});
+  heartbeat(76);
+  let i=0, scolded=false, glassDone=false;
+  try{
+  while(i<SEQ.length){
+    const want=SEQ[i], others={}, prev=i>0?SEQ[i-1]:SEQ[SEQ.length-1]; for(const k in O) if(k!==want && k!==prev) others[k]=O[k];
     let got=null, cand=null, acc=0, last=performance.now(), nh=last+5000;
     await until(()=>{ const n=performance.now(); let hit=null; if(lookingDir(O[want],18)) hit=want; else for(const k in others) if(lookingDir(others[k],16)) hit=k;
       if(hit&&hit===cand) acc+=n-last; else { cand=hit; acc=0; } last=n;
       if(n>=nh){ nh=n+5000; glow(O[want],2.0,1.6,1); CUE[want](); }
-      if(cand&&acc>=600){ got=cand; return true; } return false; },'Puzzle · toca mirar: '+want,'');
-    if(got===want){ glow(O[got],1.0,1.2,1); CUE[got](0.6); chime(null,1+i*0.12); i++; if(i===3) say('n06').catch(()=>{}); await wait(0.5); continue; }
-    if(!scolded){ scolded=true; play('aporreo',0.9,dirOf(15,0),3); await wait(0.6); await say('n05'); }
+      // SUSTO en plena concentración: mientras fija la vista en la mecedora, ella revienta contra el cristal a su espalda
+      if(want==='mecedora' && hit==='mecedora' && acc>250 && !glassDone){ glassDone=true; acc=-99999; return true; }
+      if(cand&&acc>=600){ got=cand; return true; } return false; },'Puzzle · su camino: toca '+want,'');
+    if(glassDone && got===null && want==='mecedora'){
+      beat('Susto · el cristal'); play('h5',1.1,dirOf(-170,0),1.5); knockGlass(dirOf(-170,0),4,1.3); play('susurro_grito',0.9,dirOf(-170,0),2);
+      runClip('A1-ventana-cara').then(()=>hideClip('A1-ventana-cara',0.15)).catch(()=>{}); heartbeat(104);
+      await wait(1.6); await say('n24'); continue; }
+    if(got===want){ glow(O[got],1.0,1.2,1); CUE[got](0.6); chime(null,1+i*0.12); i++; await wait(0.4); continue; }
+    if(!scolded){ scolded=true; play('aporreo',0.9,dirOf(15,0),3); await wait(0.5); await say('n05'); }
     glow(O[want],2.0,1.6,1); CUE[want]();
   }
-  // 3) La ventana: llaman al cristal hasta que la miras… y está ella
-  await wait(1.2); beat('Puzzle · la ventana'); { let nx=0; const t=performance.now();
-    await until(()=>{ const n=performance.now(); if(n>=nx){ nx=n+3500; knockGlass(O.ventana,3,0.8); } return lookingDir(O.ventana,22)||n-t>30000; },'Puzzle · toca mirar: ventana',''); }
-  beat('La mujer golpea el cristal'); scare(0.9); play('susurro_grito',0.8,O.ventana,3); await runClip('A1-ventana-cara'); await wait(0.6); hideClip('A1-ventana-cara',0.1);
+  } finally { alive=false; }
+  // El reloj se para en seco. Silencio.
+  heartbeat(0); ambience(0); rocking=false; beat('Silencio · el reloj se para'); await wait(2.2); await say('n25'); await wait(1.2); await say('n26');
+  // Su camino termina detrás de ti: la puerta
+  const door=dirOf(15,-6); await wait(0.8);
+  { let nx=0; const t=performance.now(); await until(()=>{ const n=performance.now(); if(n>=nx){ nx=n+4000; play('chirrido',0.5+Math.min(0.6,(n-t)/20000),door,4,0.9); if(n-t>3000) play('respiro',0.7,door,2.5); } return looking('A1-puerta',30)||n-t>30000; },'Esperando a que te gires hacia la puerta',''); }
+  beat('Susto · la puerta'); scare(1); await runClip('A1-puerta',{rate:1.2});
 }
 async function act2(){
   resetScene('dormitorio_a',60); ambience(0.45,[['chimenea',0.45]]); setTimeout(()=>{ if(actIdx===1) play('cajamusica',0.7,dirOf(-55,-5),3); },5000);
