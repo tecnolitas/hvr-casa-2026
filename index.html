@@ -38,6 +38,7 @@ button.on{border-color:var(--accent);color:#ffb27a}
   <button type="button" data-act="2">Acto 3</button>
   <button type="button" data-act="3">Acto 4</button>
   <button type="button" data-act="4">Acto 5</button>
+  <button type="button" data-act="5">Acto 6</button>
   <button id="guide" type="button" class="on" aria-pressed="true">Pistas</button>
   <button id="vrb" type="button">Ver en VR</button>
 </div>
@@ -88,9 +89,11 @@ const CLIPS={
 "B-pasillo":["pasillo_a",0,0,60,[1.079,1.115,1.105]],
 "B-cara":["pasillo_a",180,0,60,[1.079,1.115,1.105]],
 "C-pareja":["pasillo_a",115,18,58,[1.057,1.1,1.14]],
-"B-detras":["bano_a",-88,0,72,[1.122,1.086,1.102]]};
-const SCENES=["salon_a","dormitorio_a","pasillo_a","bano_a"];
-const SOUNDS=["ambiente","susto","chirrido","respiro","subida","chispazo","golpe","golpe2","aporreo","trueno","rayo","lluvia","chimenea","nevera","maligno","drone","reloj","mecedora","estatica","electrico","unas","unas2","gorgoteo","insecto","llanto","llanto2","risa","chirrido_metal","oleada","grave","grave2","impacto","susurro_grito","silbato","exhala","cajamusica","h1","h2","h3","h4","h5","h6","h7","b1","b2","b3","b4","grito",...Array.from({length:27},(_,i)=>"n"+String(i+1).padStart(2,"0"))];
+"B-detras":["bano_a",-88,0,72,[1.122,1.086,1.102]],
+"D-fusibles":["sotano_a",-112,-2,72,[1,1,1]],
+"D-pasillo":["sotano_a",130,0,60,[1,1,1]]};
+const SCENES=["salon_a","dormitorio_a","pasillo_a","bano_a","sotano_a"];
+const SOUNDS=["ambiente","susto","chirrido","respiro","subida","chispazo","golpe","golpe2","aporreo","trueno","rayo","lluvia","chimenea","nevera","maligno","drone","reloj","mecedora","estatica","electrico","unas","unas2","gorgoteo","insecto","llanto","llanto2","risa","chirrido_metal","oleada","grave","grave2","impacto","susurro_grito","silbato","exhala","cajamusica","h1","h2","h3","h4","h5","h6","h7","b1","b2","b3","b4","grito",...Array.from({length:43},(_,i)=>"n"+String(i+1).padStart(2,"0"))];
 const D2R=Math.PI/180;
 function dirOf(yaw,pitch){ const y=yaw*D2R,p=pitch*D2R; return new THREE.Vector3(Math.sin(y)*Math.cos(p),Math.sin(p),-Math.cos(y)*Math.cos(p)); }
 
@@ -185,8 +188,16 @@ setTimeout(()=>movers.push({until:Infinity,f(){ if(!wasps.length) return; const 
 async function waspSwarm(){ const drain=dirOf(90,-25).multiplyScalar(1.15);
   play('gorgoteo',0.9,dirOf(90,-25),1.5); await wait(1.4); play('insecto',0.6,dirOf(90,-25),1.5,1.5);
   for(let i=0;i<6;i++){ spawnWasp(drain.clone().add(new THREE.Vector3((Math.random()-0.5)*0.06,0,(Math.random()-0.5)*0.06)),i); await wait(0.35+Math.random()*0.4); }
-  await wait(5); const w=wasps[0]; if(w){ w.mode='face'; play('insecto',0.9,headDir(),0.3,1.4); } await wait(2.4); if(w) w.mode='orbit';
-  await wait(4); wasps.forEach((x,i)=>setTimeout(()=>{ x.mode='leave'; },i*350)); await wait(5); clearWasps(); }
+  // Puzzle de quietud: si mueves la cabeza, vienen hacia ti. Hay que aguantar quieta unos segundos.
+  await wait(1.2); await say('n32');
+  const prev=headDir(); let still=0, last=performance.now(), pen=0, nextPen=0, faceDone=false; const NEED=9000;
+  await until(()=>{ const n=performance.now(), dt=Math.max(1,n-last); last=n; const h=headDir(); const sp=Math.acos(Math.min(1,h.dot(prev)))/D2R/(dt/1000); prev.copy(h);
+    if(sp>40 && n>nextPen && pen<2){ pen++; nextPen=n+3500; still=0; say('n33').catch(()=>{}); const w=wasps[pen%wasps.length]; if(w){ w.mode='face'; play('insecto',1.0,h,0.3,1.5); setTimeout(()=>{ w.mode='orbit'; },1300); } }
+    else if(sp<40) still+=dt;
+    if(!faceDone && still>4000){ faceDone=true; const w=wasps[0]; if(w){ w.mode='face'; play('insecto',0.8,h,0.3,1.35); setTimeout(()=>{ w.mode='orbit'; },2200); } }
+    return still>=NEED || pen>=2&&n>nextPen+4000; },'Puzzle · quieta (avispas)','');
+  await say('n34');
+  wasps.forEach((x,i)=>setTimeout(()=>{ x.mode='leave'; },i*350)); await wait(5); clearWasps(); }
 TL.load('v/A1-puerta_still.jpg',t=>{ patches['A1-puerta'].still=t; prog(); },undefined,()=>fail('still'));
 const listener=new THREE.AudioListener(); cam.add(listener); const ctx=listener.context; const OUT=listener.getInput(); const buf={};
 const AL=new THREE.AudioLoader(); SOUNDS.forEach(n=>AL.load('s/'+n+'.mp3',b=>{ buf[n]=b; prog(); },undefined,()=>fail(n)));
@@ -199,7 +210,7 @@ const live=new Set();
 function pos(dir,dist=3,ref=1.2,life=12){ const o=new THREE.Object3D(); o.position.copy(dir).multiplyScalar(dist); scene.add(o);
   const pa=new THREE.PositionalAudio(listener); pa.setRefDistance(ref); pa.setRolloffFactor(1.2); o.add(pa); const inp=ctx.createGain(); pa.setNodeSource(inp);
   const rec={o,inp,pa}; live.add(rec); setTimeout(()=>{ try{inp.disconnect();pa.disconnect();}catch(e){} scene.remove(o); live.delete(rec); },life*1000); return rec; }
-const GAIN={lluvia:1.6,chimenea:1.4,nevera:1.5,maligno:1.2,drone:1.2,estatica:1.8,reloj:1.0,mecedora:4.5,cajamusica:1.6,llanto:1.7,electrico:1.8,trueno:1.6,rayo:1.5,golpe:1.4,golpe2:1.4,impacto:1.4,aporreo:1.2,unas:1.3,unas2:1.3,gorgoteo:1.3,risa:1.2,ambiente:0.3,h1:1.2,h2:0.9,h3:1.0,h4:1.2,h5:1.1,h6:1.1,h7:1.3,b1:0.9,b2:0.8,b3:0.8,b4:0.6,grito:1.4}; for(let i=1;i<=27;i++) GAIN['n'+String(i).padStart(2,'0')]=1.5;
+const GAIN={lluvia:1.6,chimenea:1.4,nevera:1.5,maligno:1.2,drone:1.2,estatica:1.8,reloj:1.0,mecedora:4.5,cajamusica:1.6,llanto:1.7,electrico:1.8,trueno:1.6,rayo:1.5,golpe:1.4,golpe2:1.4,impacto:1.4,aporreo:1.2,unas:1.3,unas2:1.3,gorgoteo:1.3,risa:1.2,ambiente:0.3,h1:1.2,h2:0.9,h3:1.0,h4:1.2,h5:1.1,h6:1.1,h7:1.3,b1:0.9,b2:0.8,b3:0.8,b4:0.6,grito:1.4}; for(let i=1;i<=43;i++) GAIN['n'+String(i).padStart(2,'0')]=1.5;
 function play(n,vol=1,dir=null,dist=3,rate=1){ if(!buf[n]) return null; let a;
   if(dir){ a=new THREE.PositionalAudio(listener); a.setRefDistance(1.5); const o=new THREE.Object3D(); o.position.copy(dir).multiplyScalar(dist); scene.add(o); o.add(a); a.onEnded=()=>{ scene.remove(o); }; }
   else a=new THREE.Audio(listener);
@@ -352,8 +363,19 @@ function makeMark(yaw,pitch,k){ const m=new THREE.SpriteMaterial({map:MARKT[k],t
 // La linterna sigue a la mirada
 setTimeout(()=>movers.push({until:Infinity,f(){ if(U.fl.value>0) U.ld.value.copy(headDir()); }}),0);
 
+
+// Dedicatoria dentro de las gafas (el HTML no se ve en VR)
+function endCard(){ const c=document.createElement('canvas'); c.width=1600; c.height=900; const g=c.getContext('2d'); g.fillStyle='rgba(0,0,0,0)'; g.fillRect(0,0,1600,900);
+  g.textAlign='center'; g.fillStyle='#ff8a3d'; g.font='600 92px Georgia, serif'; g.fillText('Feliz Halloween, Laura',800,170);
+  g.fillStyle='#e9e2d6'; g.font='italic 46px Georgia, serif';
+  const txt=document.querySelector('#end p').textContent.trim(); const words=txt.split(' '); let line='', y=290;
+  for(const w of words){ const t=line?line+' '+w:w; if(g.measureText(t).width>1380){ g.fillText(line,800,y); y+=64; line=w; } else line=t; } if(line) g.fillText(line,800,y);
+  const tex=new THREE.CanvasTexture(c); const m=new THREE.MeshBasicMaterial({map:tex,transparent:true,depthTest:false,opacity:0}); const pl=new THREE.Mesh(new THREE.PlaneGeometry(3.2,1.8),m); pl.renderOrder=999;
+  const d=headDir(); d.y=0; d.normalize(); pl.position.copy(d).multiplyScalar(3.4); pl.position.y=0.1; pl.lookAt(0,0.1,0); scene.add(pl);
+  const st=performance.now(); movers.push({until:st+4000,f(){ m.opacity=Math.min(1,(performance.now()-st)/3000); }}); return pl; }
+
 // ---------- Guion ----------
-const ACTS=[act1,act2,act3,act4,act5]; let actIdx=0, t0=0;
+const ACTS=[act1,act2,act3,act4,actSotano,act5]; let actIdx=0, t0=0;
 async function act1(){
   resetScene('salon_a',-165); ambience(0.55,[['lluvia',0.45,dirOf(-170,0),4]]); setTimeout(()=>{ if(actIdx===0) play('rayo',0.7); },7000);
   await fadeB(1,3); beat('Acto 1 · El salón');
@@ -417,28 +439,43 @@ async function suCamino(){
   beat('Susto · la puerta'); play('grito',1.3,door,1.2); play(nextHit(),1.0); await runClip('A1-puerta',{rate:1.25});
 }
 async function act2(){
-  resetScene('dormitorio_a',60); ambience(0.45,[['chimenea',0.45]]); setTimeout(()=>{ if(actIdx===1) play('cajamusica',0.7,dirOf(-55,-5),3); },5000);
-  await fadeB(1,3); beat('Acto 2 · El dormitorio'); await wait(4); await say('n08'); await wait(6);
-  await waitLook('A2-crucifijo',22,'Esperando a que mires el crucifijo','Mira el crucifijo de la pared (a tu izquierda).');
-  beat('El crucifijo se cae'); await spinCross(); await wait(7);
-  await waitAway('A2-armario',4,'Esperando a que no mires el armario','El armario está a tu espalda. Ignóralo unos segundos.');
-  beat('Algo dentro del armario'); { const d=dirOf(-170,-5);
-    scratches(d,5); await wait(3.5);
-    for(let i=0;i<7;i++) setTimeout(()=>play('golpe',0.35+Math.random()*0.2,d,2.5,1.6+Math.random()*0.3),i*120); play('chirrido',0.5,d,2.5,1.6); await wait(2.5);
-    play('golpe',1.1,d,2.5,0.85); await wait(1.4); play('golpe',1.2,d,2.5,0.8); await wait(1.4); play('golpe',1.4,d,2.5,0.75); await wait(3);
-    whisper(2.5,0.35,0.6); await wait(4); }
-  const sawHer=await noMires(); await wait(2);
-  if(!sawHer){
-    await waitLook('B-nina',26,'Esperando a que mires la puerta abierta','Alguien llora en la puerta (a tu derecha, detrás).');
-    beat('La niña de la puerta'); { const l1=play('llanto',0.9,dirOf(140,0),3,1.15); const P=patches['B-nina']; const pN=runClip('B-nina');
-      await wait(3.0); beat('La niña se desvanece'); try{ l1&&l1.stop(); }catch(e){} play('grave2',0.55);
-      await animate(1.3,k=>{ P.m.uniforms.a.value=Math.max(0,(1-k)*(0.7+0.3*Math.sin(k*38))); });
-      await pN; hideClip('B-nina',0.01); await wait(1.2); whisper(1.8,0.25,0.55); await wait(4); }
-  }
-  beat('Algo araña bajo la cama'); scratches(dirOf(58,-30),8);
-  await waitLook('B-cama',28,'Esperando a que mires la cama','Algo araña debajo de la cama…');
-  scratches(dirOf(58,-30),3); await wait(1.6); beat('Silencio bajo la cama'); await wait(2.3); beat('Susto 2 · la cama'); scare(1); play('susurro_grito',1,dirOf(58,-25),1.5); await runClip('B-cama'); await wait(0.25);
+  resetScene('dormitorio_a',60); ambience(0.45,[['chimenea',0.45]]); setTimeout(()=>{ if(actIdx===1) play('cajamusica',0.55,dirOf(-55,-5),3); },4000);
+  await fadeB(1,3); beat('Acto 2 · El dormitorio'); await wait(3); await say('n08'); await wait(3);
+  await noMires(); await wait(2.5);
+  await escondite();
   await fadeB(0,0.6); hideClip('B-cama',0.01); await wait(0.8); rumble(); await wait(2);
+}
+// Puzzle (escondite): la niña se ríe desde un sitio; hay que localizarla de oído y mirarla antes de tres latidos.
+// En la tercera ronda, mientras escuchas en silencio, se cae el crucifijo a tu espalda; y la última risa sale de debajo de la cama.
+async function escondite(){
+  const SP={armario:dirOf(-170,-5), puerta:dirOf(140,0), cama:dirOf(58,-30)};
+  await say('n28'); await wait(1.2);
+  const round=async(spot,onFound,{muffled=false,before=null}={})=>{
+    let misses=0; const d=SP[spot];
+    for(;;){
+      await wait(2.4+Math.random()*1.6);
+      if(before){ await before(); before=null; await wait(2.5); }
+      play('risa',muffled?0.55:0.75,d,muffled?1.6:2.6,1.32+Math.random()*0.06); if(muffled) scratches(d,2);
+      const t0=performance.now(); let got=null,cand=null,acc=0,last=t0,k=0;
+      await until(()=>{ const n=performance.now(); if(n-t0>=600+k*1250 && k<3){ tick(headDir()); k++; }
+        let hit=null; for(const s in SP) if(lookingDir(SP[s],s==='cama'?28:24)) hit=s; if(hit&&hit===cand) acc+=n-last; else { cand=hit; acc=0; } last=n;
+        if(cand&&acc>=350&&(cand===spot||n-t0>1300)){ got=cand; return true; } return n-t0>4600; },'Escondite · ¿dónde está? ('+spot+')','');
+      if(got===spot){ await onFound(d); return; }
+      if(got){ await say('n29'); continue; }
+      misses++; play('golpe',1.4,d,2,0.7); setTimeout(()=>whisper(1.2,0.3,0.55),400);
+      if(misses>=2){ let nx=0; const t=performance.now(); await until(()=>{ const n=performance.now(); if(n>=nx){ nx=n+2800; play('risa',0.75,d,2.4,1.32); } return lookingDir(d,26)||n-t>20000; },'Escondite · pista (risa insistente)',''); await onFound(d); return; }
+      await wait(0.6);
+    }
+  };
+  // 1) El armario: traqueteo y la oyes correr
+  await round('armario',async d=>{ beat('Escondite · la has encontrado (armario)'); for(let i=0;i<6;i++) setTimeout(()=>play('golpe',0.4+Math.random()*0.2,d,2.5,1.6+Math.random()*0.3),i*110); play('chirrido',0.6,d,2.5,1.5);
+    await wait(1.0); for(let i=0;i<6;i++) setTimeout(()=>play('golpe',0.25,dirOf(-170+i*25,-30),2.2,1.5),i*170); await wait(1.5); await say('n30'); });
+  // 2) La puerta: está ahí, y se desvanece
+  await round('puerta',async d=>{ beat('Escondite · la niña en la puerta'); const P=patches['B-nina']; const pN=runClip('B-nina'); play('llanto',0.5,d,3,1.15); play('h7',0.8,d,2);
+    await wait(2.6); play('grave2',0.55); await animate(1.3,k=>{ P.m.uniforms.a.value=Math.max(0,(1-k)*(0.7+0.3*Math.sin(k*38))); }); await pN.catch(()=>{}); hideClip('B-nina',0.01); await wait(0.8); await say('n31'); });
+  // 3) La cama, y antes el crucifijo cae a tu espalda mientras escuchas
+  await round('cama',async d=>{ beat('Escondite · silencio bajo la cama'); ambience(0); await wait(2.2); beat('Susto · la cama'); play('grito',1.0,d,1.2); scare(1); await runClip('B-cama'); await wait(0.25); },
+    {muffled:true, before:async()=>{ beat('Escondite · el crucifijo cae (a tu espalda)'); await spinCross(); }});
 }
 // Puzzle 2 (Amnesia): viene por la puerta; hay que aguantar sin mirarla mientras el narrador cuenta. Si la miras, está ahí.
 async function noMires(){
@@ -507,7 +544,7 @@ async function act4(){
   beat('Alguien en el reflejo'); hideClip('A4-espejo',0.01); play('b3',0.5); await runClip('A4-espejo-figura'); await wait(2.5);
   await waitLook('B-detras',35,'Esperando a que te gires (baño)','Hay alguien detrás de ti… gírate.');
   beat('Susto 4 · detrás de ti'); hideClip('A4-espejo-figura',0.01); setTimeout(()=>{ scare(1); play('susurro_grito',1,dirOf(-88,0),1.2); },800); await runClip('B-detras');
-  await fadeB(0,0.6); hideClip('B-detras',0.01); await wait(0.8); rumble(); await wait(2); await say('n18'); await wait(1);
+  await fadeB(0,0.6); hideClip('B-detras',0.01); await wait(0.8); rumble(); await wait(2); await say('n35'); await wait(1);
 }
 // Puzzle 3 (Resident Evil): la llave está en la bañera. Hay que mirar el agua sin apartar la vista… hasta que sale la mano.
 async function bathtub(){
@@ -523,40 +560,76 @@ async function bathtub(){
   { let nx=0; const t=performance.now(); await until(()=>{ const n=performance.now(); if(n>nx){ nx=n+4000; glow(d,2.0,0.5,0.8); play('chirrido_metal',0.2,d,2,2.4); } return lookingDir(d,18)||n-t>20000; },'Puzzle · coge la llave',''); }
   glow(d,0.9,0.9,1); chime(null,1.25); await wait(1.5);
 }
-async function act5(){
-  resetScene('dormitorio_a',60,[1.25,0.3,0.24]); if(cruz.root){ cruz.root.visible=true; cruz.sp.visible=false; } ambience(0.3,[['maligno',0.35],['drone',0.3]]); heartbeat(62);
-  await fadeB(1,3); beat('Acto 5 · El final'); await wait(4); await say('n19');
-  const box=dirOf(-55,-5);
-  { let nx=0; const t=performance.now(); await until(()=>{ const n=performance.now(); if(n>nx){ nx=n+7000; play('cajamusica',0.35,box,3,0.8); glow(box,1.6,0.8,0.5); } return lookingDir(box,20)||n-t>30000; },'Esperando a que mires la caja de música',''); }
-  beat('La caja de música suena'); play('cajamusica',0.7,box,2.5,0.8); await wait(5); play('llanto',0.6,headDir().multiplyScalar(-1),3,1.1); await wait(4);
-  // Apagón y linterna (Outlast): tres marcas en las paredes, contrarreloj, con algo dando vueltas a tu alrededor
-  beat('Apagón'); play('electrico',0.4); await fadeB(0.04,1.0); ambience(0.12,[['drone',0.25]]); heartbeat(72); await wait(1.5);
-  U.fl.value=1; U.b.value=1; play('chispazo',0.35); await say('n20');
-  { const h=headDir(); const y0=Math.atan2(h.x,-h.z)/D2R; [[y0+75,4],[y0+190,-6],[y0-85,12]].forEach(([y,p],k)=>marks.push(makeMark(y,p,k))); }
-  let found=0, si=0, said21=false; const t0=performance.now(); let nextStep=t0+800;
+// Fusibles: objetos que solo se ven con la linterna
+const FUSET=(()=>{ const c=document.createElement('canvas'); c.width=128; c.height=256; const g=c.getContext('2d');
+  g.fillStyle='rgba(235,228,210,0.95)'; g.beginPath(); g.roundRect(28,40,72,176,18); g.fill(); g.fillStyle='rgba(170,130,60,0.95)'; g.fillRect(36,18,56,30); g.fillRect(36,208,56,30);
+  g.fillStyle='rgba(60,50,40,0.7)'; g.fillRect(58,70,12,116); g.strokeStyle='rgba(255,255,255,0.6)'; g.lineWidth=4; g.beginPath(); g.moveTo(40,60); g.lineTo(40,190); g.stroke(); return new THREE.CanvasTexture(c); })();
+function makeFuse(yaw,pitch){ const m=new THREE.SpriteMaterial({map:FUSET,transparent:true,depthTest:false,depthWrite:false,opacity:0}); const sp=new THREE.Sprite(m); const d=dirOf(yaw,pitch); sp.position.copy(d).multiplyScalar(3.2); sp.scale.set(0.16,0.32,1); sp.renderOrder=350; scene.add(sp);
+  const mk={sp,m,d,found:false}; movers.push({until:Infinity,f(){ if(!sp.parent){ this.until=0; return; } const s=THREE.MathUtils.smoothstep(headDir().dot(d),0.90,0.975); m.opacity=mk.found?0:0.95*s*U.fl.value; const gl=0.75+0.25*Math.sin(performance.now()*0.006); m.color.setRGB(gl,gl,gl); }}); return mk; }
+async function actSotano(){
+  resetScene('sotano_a',-20); ambience(0.3,[['drone',0.3],['nevera',0.3,dirOf(94,-10),3]]); loop(()=>drip(dirOf(25,-40)),1700);
+  await fadeB(1,3); beat('Acto 5 · El sótano'); await wait(3); await say('n36'); await wait(2.5);
+  // La bombilla parpadea y revienta
+  beat('La bombilla'); const bulb=dirOf(-5,40); play('electrico',0.5,bulb,2);
+  for(let j=0;j<4;j++){ await fadeB(0.35,0.06); await wait(0.08+Math.random()*0.2); await fadeB(1,0.06); await wait(0.25+Math.random()*0.5); }
+  play('chispazo',0.9,bulb,2); play('golpe',0.6,bulb,2,2.6); U.b.value=0.03; ambience(0.15,[['drone',0.25]]); heartbeat(70); await wait(2.4);
+  U.fl.value=1; U.b.value=1; play('chispazo',0.3); await say('n37');
+  // Tres fusibles escondidos; algo baja la escalera mientras buscas; una figura en el pasillo cuando la linterna pasa por allí
+  const FZ=[[-162,-6],[94,-14],[-29,-34]]; FZ.forEach(([y,p])=>marks.push(makeFuse(y,p)));
+  const stairs=dirOf(70,5), corr=dirOf(130,0); let found=0, si=0, ghost=0; const t0=performance.now(); let lastFound=t0, nextHint=0; let nextStep=t0+2500, nextEv=t0+9000, ev=0;
   while(found<3){
     const left={}; marks.forEach((mk,i)=>{ if(!mk.found) left[i]=mk.d; });
     let cand=null,acc=0,last=performance.now(),got=null;
     await until(()=>{ const n=performance.now();
-      if(n>=nextStep){ const a=si*0.5, R=2.4-Math.min(1.2,si*0.03); play('golpe',0.2+Math.min(0.3,si*0.01),new THREE.Vector3(Math.sin(a),-0.35,-Math.cos(a)).normalize(),R,1.25+Math.random()*0.1);
-        if(si%9===4) whisper(1.6,0.5,0.4); if(si===14){ const bb=headDir().multiplyScalar(-1); bb.y=0.05; play('exhala',1,bb.normalize(),0.5); } si++; nextStep=n+560; heartbeat(Math.min(125,80+si*1.5)); }
-      if(!said21 && n-t0>22000 && !voice){ said21=true; say('n21').catch(()=>{}); }
-      let hit=null; for(const k in left) if(lookingDir(left[k],8)) hit=k; if(hit!==null&&hit===cand) acc+=n-last; else { cand=hit; acc=0; } last=n;
-      if(cand!==null&&acc>=500){ got=cand; return true; } return n-t0>75000; },'Puzzle · busca las marcas ('+found+'/3)','');
+      // pasos bajando la escalera, cada vez más abajo
+      if(n>=nextStep && si<12){ play('golpe',0.18+si*0.035,dirOf(70,10-si*2.2),3.6-si*0.18,0.95+Math.random()*0.1); play('chirrido',0.12,stairs,3.5,1.7+Math.random()*0.2); si++; nextStep=n+2600-si*90; heartbeat(Math.min(118,72+si*4)); }
+      if(n>=nextEv){ nextEv=n+9000+Math.random()*4000; const k=ev++%3; if(k===0) creak(dirOf(2,-5),2,0.8); else if(k===1){ const b=headDir().multiplyScalar(-1); b.y=0.05; play('respiro',0.8,b.normalize(),0.6); } else play('unas',0.7,dirOf(-60,-10),2.5); }
+      // la figura del pasillo: aparece cuando ya has encontrado uno y la linterna pasa por el pasillo; desaparece en cuanto apartas la luz
+      if(found>=1 && ghost===0 && lookingDir(corr,35)){ ghost=1; showClip('D-pasillo'); runClip('D-pasillo').catch(()=>{}); play('grave2',0.5); }
+      else if(ghost===1 && !lookingDir(corr,30)){ ghost=2; hideClip('D-pasillo',0.05); }
+      if(n-lastFound>12000 && n>nextHint){ nextHint=n+6000; const ks=Object.keys(left); if(ks.length){ const d=left[ks[0]]; play('chirrido_metal',0.22,d,2.2,2.6); setTimeout(()=>play('golpe',0.15,d,2.2,3.0),180); } }
+      let hit=null; for(const k in left) if(lookingDir(left[k],7)) hit=k; if(hit!==null&&hit===cand) acc+=n-last; else { cand=hit; acc=0; } last=n;
+      if(cand!==null&&acc>=450){ got=cand; lastFound=n; return true; } return n-t0>90000; },'Puzzle · busca los fusibles ('+found+'/3)','');
     if(got===null) break;
-    const mk=marks[got]; mk.found=true; found++; chime(mk.d,1+found*0.15); play('grave2',0.4);
-    if(found===1){ play('electrico',0.5); for(let j=0;j<5;j++){ U.fl.value=0; U.b.value=0; await wait(0.06+Math.random()*0.1); U.fl.value=1; U.b.value=1; await wait(0.08+Math.random()*0.15); } play('h7',0.9,headDir().multiplyScalar(-1),1); }
-    if(found===2) say('n22').catch(()=>{});
+    const mk=marks[got]; mk.found=true; found++; chime(mk.d,1+found*0.15); play('chirrido_metal',0.3,mk.d,2,2.2);
+    if(found===1) say('n38').catch(()=>{}); if(found===2) say('n39').catch(()=>{});
   }
-  heartbeat(0); await wait(1.2); beat('Silencio'); await wait(2); await say('n23'); await wait(0.8);
-  U.fl.value=0; placeInView('A5-final'); U.b.value=1; beat('Susto final'); scare(1); play('susurro_grito',1,headDir(),0.6); await runClip('A5-final');
+  if(ghost===1) hideClip('D-pasillo',0.05);
+  heartbeat(0); await say('n40');
+  // Ponerlos en la caja: mirarla un momento. Vuelve la luz… y está ahí.
+  const box=dirOf(-112,-2); { let nx=0; const t=performance.now(); let acc=0,last=t;
+    await until(()=>{ const n=performance.now(); if(n>=nx){ nx=n+3500; glow(box,1.8,1.2,0.8); play('chirrido_metal',0.25,box,2.5,1.4); } if(lookingDir(box,16)) acc+=n-last; else acc=0; last=n; return acc>1100||n-t>30000; },'Puzzle · pon los fusibles (mira la caja)',''); }
+  play('golpe',1.3,box,2,0.6); play('electrico',0.6,box,2); await wait(0.5);
+  U.fl.value=0; U.b.value=1; beat('Susto · vuelve la luz'); play('grito',1.3,box,1.0); scare(1); await runClip('D-fusibles',{rate:1.1});
+  await fadeB(0,0.5); hideClip('D-fusibles',0.01); stopLoops(); await wait(0.8); rumble(); await wait(2); await say('n41'); await wait(1);
+}
+async function act5(){
+  resetScene('dormitorio_a',60,[1.25,0.3,0.24]); if(cruz.root){ cruz.root.visible=true; cruz.sp.visible=false; } ambience(0.3,[['maligno',0.35],['drone',0.3]]); heartbeat(62);
+  await fadeB(1,3); beat('Acto 6 · El final'); await wait(4); await say('n19');
+  const box=dirOf(-55,-5);
+  { let nx=0; const t=performance.now(); await until(()=>{ const n=performance.now(); if(n>=nx){ nx=n+6000; play('cajamusica',0.35,box,3,0.8); glow(box,1.6,0.8,0.5); } return lookingDir(box,20)||n-t>30000; },'Esperando a que mires la caja de música',''); }
+  // La caja de música (Five Nights / Outlast): mientras suene, ella no se acerca. Se va parando; mirarla le da cuerda.
+  const mb=play('cajamusica',0.75,box,2.5,1.0); if(mb) mb.setLoop(true); await wait(2); await say('n42');
+  let E=1, last=performance.now(), warned=false, stops=0, stopped=false; const t0=last, DUR=50000; let nextEv=t0+7000, ev=0; let dist=6;
+  await until(()=>{ const n=performance.now(), dt=(n-last)/1000; last=n;
+    if(lookingDir(box,22)) E=Math.min(1,E+dt/1.6); else E=Math.max(0,E-dt/7.5);
+    if(mb){ const r=0.55+0.45*Math.min(1,E/0.6); mb.setPlaybackRate(r); mb.setVolume(0.75*(GAIN.cajamusica||1)*(E>0?1:0)); }
+    if(E<0.35 && !warned && !voice){ warned=true; say('n43').catch(()=>{}); glow(box,1.5,1.0,0.8); } if(E>0.6) warned=false;
+    if(E<=0 && !stopped){ stopped=true; stops++; dist=Math.max(0.6,dist-1.8); const b=headDir().multiplyScalar(-1); b.y=0.05; for(let j=0;j<3;j++) setTimeout(()=>play('golpe',0.35+stops*0.12,b.clone().normalize(),dist,1.2),j*420); setTimeout(()=>play('respiro',0.6+stops*0.2,b.clone().normalize(),dist),1400); heartbeat(80+stops*15); U.b.value=Math.max(0.35,1-stops*0.2); }
+    if(E>0.2) stopped=false;
+    // tentaciones: cosas que te piden mirar a otro lado
+    if(n>=nextEv){ nextEv=n+8000+Math.random()*3000; const k=ev++%4; if(k===0) play('llanto',0.55,dirOf(140,0),3,1.12); else if(k===1) knocks(dirOf(-170,-5),3,0.35,0.9); else if(k===2) whisper(2.2,0.35,0.5); else play('risa',0.5,dirOf(58,-25),2.5,1.3); }
+    return n-t0>DUR || stops>=3; },'Puzzle · que no se pare la caja','');
+  try{ mb&&mb.stop(); }catch(e){} heartbeat(0); ambience(0); U.b.value=Math.min(U.b.value,0.6);
+  beat('Silencio'); await wait(2.5); await say('n23'); await wait(0.8);
+  placeInView('A5-final'); U.b.value=1; beat('Susto final'); play('grito',1.4,headDir(),0.5); scare(1); await runClip('A5-final');
   await fadeB(0,0.6); hideClip('A5-final',0.01); await wait(1.5);
-  beat('Dedicatoria'); ambience(0); document.getElementById('end').hidden=false; tone(440,ctx.currentTime+0.2,2,0.15,OUT); tone(659,ctx.currentTime+0.6,2,0.12,OUT);
+  beat('Dedicatoria'); ambience(0); document.getElementById('end').hidden=false; endCard(); tone(440,ctx.currentTime+0.2,2,0.15,OUT); tone(659,ctx.currentTime+0.6,2,0.12,OUT);
 }
 async function runFrom(i){
   gen++; force=false; waiters=[]; document.getElementById('end').hidden=true; U.b.value=0;
   for(const id in vids) vids[id].pause(); for(const a of live) try{ a.a&&a.a.stop(); }catch(e){} live.clear(); heartbeat(0); beds=[]; amb=null;
-  const g=gen; t0=performance.now()-[0,240,450,660,840][i]*1000;
+  const g=gen; t0=performance.now()-[0,170,380,600,800,990][i]*1000;
   try{ for(actIdx=i;actIdx<ACTS.length;actIdx++){ if(g!==gen) return; markAct(); await ACTS[actIdx](); await fadeB(0,1.5); } }
   catch(e){ if(!(e instanceof Skip)) console.error(e); }
 }
