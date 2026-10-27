@@ -90,10 +90,10 @@ const CLIPS={
 "B-cara":["pasillo_a",180,0,60,[1.079,1.115,1.105]],
 "C-pareja":["pasillo_a",115,18,58,[1.057,1.1,1.14]],
 "B-detras":["bano_a",-88,0,72,[1.122,1.086,1.102]],
-"D-fusibles":["sotano_a",-112,-2,72,[1,1,1]],
-"D-pasillo":["sotano_a",130,0,60,[1,1,1]]};
+"D-pasillo":["sotano_a",130,0,60,[1,1,1]],
+"D-cara":["sotano_a",-112,-2,72,[1,1,1]]};
 const SCENES=["salon_a","dormitorio_a","pasillo_a","bano_a","sotano_a"];
-const SOUNDS=["ambiente","susto","chirrido","respiro","subida","chispazo","golpe","golpe2","aporreo","trueno","rayo","lluvia","chimenea","nevera","maligno","drone","reloj","mecedora","estatica","electrico","unas","unas2","gorgoteo","insecto","llanto","llanto2","risa","chirrido_metal","oleada","grave","grave2","impacto","susurro_grito","silbato","exhala","cajamusica","h1","h2","h3","h4","h5","h6","h7","b1","b2","b3","b4","grito",...Array.from({length:43},(_,i)=>"n"+String(i+1).padStart(2,"0"))];
+const SOUNDS=["ambiente","susto","chirrido","respiro","subida","chispazo","golpe","golpe2","aporreo","trueno","rayo","lluvia","chimenea","nevera","maligno","drone","reloj","mecedora","estatica","electrico","unas","unas2","gorgoteo","insecto","llanto","llanto2","risa","chirrido_metal","oleada","grave","grave2","impacto","susurro_grito","silbato","exhala","cajamusica","h1","h2","h3","h4","h5","h6","h7","b1","b2","b3","b4","grito",...Array.from({length:47},(_,i)=>"n"+String(i+1).padStart(2,"0"))];
 const D2R=Math.PI/180;
 function dirOf(yaw,pitch){ const y=yaw*D2R,p=pitch*D2R; return new THREE.Vector3(Math.sin(y)*Math.cos(p),Math.sin(p),-Math.cos(y)*Math.cos(p)); }
 
@@ -210,7 +210,7 @@ const live=new Set();
 function pos(dir,dist=3,ref=1.2,life=12){ const o=new THREE.Object3D(); o.position.copy(dir).multiplyScalar(dist); scene.add(o);
   const pa=new THREE.PositionalAudio(listener); pa.setRefDistance(ref); pa.setRolloffFactor(1.2); o.add(pa); const inp=ctx.createGain(); pa.setNodeSource(inp);
   const rec={o,inp,pa}; live.add(rec); setTimeout(()=>{ try{inp.disconnect();pa.disconnect();}catch(e){} scene.remove(o); live.delete(rec); },life*1000); return rec; }
-const GAIN={lluvia:1.6,chimenea:1.4,nevera:1.5,maligno:1.2,drone:1.2,estatica:1.8,reloj:1.0,mecedora:4.5,cajamusica:1.6,llanto:1.7,electrico:1.8,trueno:1.6,rayo:1.5,golpe:1.4,golpe2:1.4,impacto:1.4,aporreo:1.2,unas:1.3,unas2:1.3,gorgoteo:1.3,risa:1.2,ambiente:0.3,h1:1.2,h2:0.9,h3:1.0,h4:1.2,h5:1.1,h6:1.1,h7:1.3,b1:0.9,b2:0.8,b3:0.8,b4:0.6,grito:1.4}; for(let i=1;i<=43;i++) GAIN['n'+String(i).padStart(2,'0')]=1.5;
+const GAIN={lluvia:1.6,chimenea:1.4,nevera:1.5,maligno:1.2,drone:1.2,estatica:1.8,reloj:1.0,mecedora:4.5,cajamusica:1.6,llanto:1.7,electrico:1.8,trueno:1.6,rayo:1.5,golpe:1.4,golpe2:1.4,impacto:1.4,aporreo:1.2,unas:1.3,unas2:1.3,gorgoteo:1.3,risa:1.2,ambiente:0.3,h1:1.2,h2:0.9,h3:1.0,h4:1.2,h5:1.1,h6:1.1,h7:1.3,b1:0.9,b2:0.8,b3:0.8,b4:0.6,grito:1.4}; for(let i=1;i<=47;i++) GAIN['n'+String(i).padStart(2,'0')]=1.5;
 function play(n,vol=1,dir=null,dist=3,rate=1){ if(!buf[n]) return null; let a;
   if(dir){ a=new THREE.PositionalAudio(listener); a.setRefDistance(1.5); const o=new THREE.Object3D(); o.position.copy(dir).multiplyScalar(dist); scene.add(o); o.add(a); a.onEnded=()=>{ scene.remove(o); }; }
   else a=new THREE.Audio(listener);
@@ -251,12 +251,14 @@ function rumble(){ if(buf.trueno){ play('trueno',0.9); return; } const t=ctx.cur
 let amb=null, loops=[]; const marks=[];
 let beds=[]; function ambience(vol=0.8,extra=[]){ if(amb) try{amb.stop();}catch(e){} beds.forEach(b=>{ try{b.stop();}catch(e){} }); beds=[]; amb=vol?play('ambiente',vol):null; if(amb) amb.setLoop(true); extra.forEach(([n,v,dir,dist])=>{ const a=play(n,v,dir||null,dist||3); if(a){ a.setLoop(true); beds.push(a); } }); }
 // Sustos: cada uno con un golpe distinto, sin repetir seguidos
-const HITS=['h1','h2','h3','h4','h5','h6','h7']; let hitBag=[], lastHit=null;
+const HITS=['h2','h3','h4','h5','h6','h7']; let hitBag=[], lastHit=null;
 function nextHit(){ if(!hitBag.length){ hitBag=HITS.filter(h=>h!==lastHit).sort(()=>Math.random()-0.5); } lastHit=hitBag.pop(); return lastHit; }
-function scare(v=1){ const h=nextHit(); play(h,v); const r=Math.random(); if(r<0.35) play('susto',0.45*v); else if(r<0.65) play('grave',0.6*v); else if(r<0.8) setTimeout(()=>play('silbato',0.4*v),120); }
+// Vibración de los mandos (si los tiene en la mano)
+function buzzHands(k=1,ms=200){ try{ const s=r.xr.getSession&&r.xr.getSession(); if(!s) return; for(const src of s.inputSources){ const gp=src.gamepad; if(!gp) continue; const h=gp.hapticActuators&&gp.hapticActuators[0]; if(h&&h.pulse) h.pulse(Math.min(1,k),ms); else if(gp.vibrationActuator&&gp.vibrationActuator.playEffect) gp.vibrationActuator.playEffect('dual-rumble',{duration:ms,strongMagnitude:k,weakMagnitude:k}); } }catch(e){} }
+function scare(v=1){ const h=nextHit(); play('impacto',0.9*v); play(h,v); buzzHands(1,320); setTimeout(()=>buzzHands(0.6,180),380); const r=Math.random(); if(r<0.35) play('susto',0.45*v); else if(r<0.65) play('grave',0.6*v); else if(r<0.8) setTimeout(()=>play('silbato',0.4*v),120); }
 function loop(fn,every){ const id=setInterval(fn,every); loops.push(id); return id; }
 function stopLoops(){ loops.forEach(clearInterval); loops=[]; }
-let hb=null; function heartbeat(bpm){ if(hb){ clearInterval(hb); hb=null; } if(!bpm) return; hb=setInterval(()=>{ const t=ctx.currentTime+0.02; [0,0.26].forEach((d,i)=>{ const nz=noise(); const g=ctx.createGain(); g.gain.setValueAtTime(0,t+d); g.gain.linearRampToValueAtTime(i?1.2:2,t+d+0.012); g.gain.exponentialRampToValueAtTime(0.001,t+d+0.14); nz.connect(filt('lowpass',75,0.7)).connect(g).connect(OUT); nz.start(t+d); nz.stop(t+d+0.2); }); },60000/bpm); }
+let hb=null; function heartbeat(bpm){ if(hb){ clearInterval(hb); hb=null; } if(!bpm) return; hb=setInterval(()=>{ buzzHands(0.35,60); setTimeout(()=>buzzHands(0.25,50),260); const t=ctx.currentTime+0.02; [0,0.26].forEach((d,i)=>{ const nz=noise(); const g=ctx.createGain(); g.gain.setValueAtTime(0,t+d); g.gain.linearRampToValueAtTime(i?1.2:2,t+d+0.012); g.gain.exponentialRampToValueAtTime(0.001,t+d+0.14); nz.connect(filt('lowpass',75,0.7)).connect(g).connect(OUT); nz.start(t+d); nz.stop(t+d+0.2); }); },60000/bpm); }
 function tick(dir){ const s=pos(dir,3,1,1); const t=ctx.currentTime; const nz=noise(); const g=ctx.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.5,t+0.002); g.gain.exponentialRampToValueAtTime(0.001,t+0.04); nz.connect(filt('bandpass',3000,3)).connect(g).connect(s.inp); nz.start(t); nz.stop(t+0.05); }
 function drip(dir){ const s=pos(dir,2,0.8,1); const t=ctx.currentTime; const o=ctx.createOscillator(); o.frequency.setValueAtTime(1300+Math.random()*300,t); o.frequency.exponentialRampToValueAtTime(500,t+0.06); const g=ctx.createGain(); g.gain.setValueAtTime(0.35,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.08); o.connect(g).connect(s.inp); o.start(t); o.stop(t+0.1); }
 
@@ -359,9 +361,26 @@ function markTex(k){ const c=document.createElement('canvas'); c.width=c.height=
   return new THREE.CanvasTexture(c); }
 const MARKT=[0,1,2].map(markTex);
 function makeMark(yaw,pitch,k){ const m=new THREE.SpriteMaterial({map:MARKT[k],transparent:true,depthTest:false,depthWrite:false,opacity:0}); const sp=new THREE.Sprite(m); const d=dirOf(yaw,pitch); sp.position.copy(d).multiplyScalar(4.5); sp.scale.set(1.15,1.15,1); sp.renderOrder=350; scene.add(sp);
-  const mk={sp,m,d,found:false}; movers.push({until:Infinity,f(){ if(!sp.parent){ this.until=0; return; } const s=THREE.MathUtils.smoothstep(headDir().dot(d),0.90,0.975); m.opacity=(mk.found?0.25:0.95)*s*U.fl.value; }}); return mk; }
-// La linterna sigue a la mirada
-setTimeout(()=>movers.push({until:Infinity,f(){ if(U.fl.value>0) U.ld.value.copy(headDir()); }}),0);
+  const mk={sp,m,d,found:false}; movers.push({until:Infinity,f(){ if(!sp.parent){ this.until=0; return; } const s=THREE.MathUtils.smoothstep(aimDir().dot(d),0.90,0.975); m.opacity=(mk.found?0.25:0.95)*s*U.fl.value; }}); return mk; }
+
+// ---------- Mandos (opcionales) ----------
+const ctrls=[]; let selQueue=[];
+[0,1].forEach(i=>{ const c=r.xr.getController(i); c.userData={hand:'',on:false};
+  c.addEventListener('connected',e=>{ c.userData.hand=(e.data&&e.data.handedness)||''; c.userData.on=true; });
+  c.addEventListener('disconnected',()=>{ c.userData.on=false; });
+  c.addEventListener('selectstart',()=>{ selQueue.push({c,t:performance.now()}); });
+  const lamp=new THREE.Group(); const body=new THREE.Mesh(new THREE.CylinderGeometry(0.017,0.021,0.15,14),new THREE.MeshBasicMaterial({color:0x1a1a1a})); body.rotation.x=Math.PI/2; lamp.add(body);
+  const lens=new THREE.Mesh(new THREE.CircleGeometry(0.02,16),new THREE.MeshBasicMaterial({color:0xfff2c8})); lens.position.z=-0.076; lens.rotation.y=Math.PI; lamp.add(lens); lamp.position.z=-0.04; lamp.visible=false; c.add(lamp); c.userData.lamp=lamp;
+  scene.add(c); ctrls.push(c); });
+function handCtrl(){ const on=ctrls.filter(c=>c.userData.on); return on.find(c=>c.userData.hand==='right')||on[0]||null; }
+const _cq=new THREE.Quaternion(), _cp=new THREE.Vector3();
+function ctrlRay(){ if(!r.xr.isPresenting) return null; const c=handCtrl(); if(!c) return null; c.getWorldQuaternion(_cq); c.getWorldPosition(_cp); return {o:_cp.clone(),d:new THREE.Vector3(0,0,-1).applyQuaternion(_cq).normalize()}; }
+// Hacia dónde apunta la linterna: el mando si lo hay, si no la cabeza
+function aimDir(){ const cr=ctrlRay(); return cr? cr.d : headDir(); }
+function aimAt(d,deg){ return aimDir().dot(d)>Math.cos(deg*D2R); }
+function triggerSince(t){ return selQueue.some(x=>x.t>=t); }
+// La linterna sigue al mando (o a la mirada)
+setTimeout(()=>movers.push({until:Infinity,f(){ if(U.fl.value>0) U.ld.value.copy(aimDir()); const c=handCtrl(); ctrls.forEach(k=>{ k.userData.lamp.visible=(k===c && U.fl.value>0 && r.xr.isPresenting); }); }}),0);
 
 
 // Dedicatoria dentro de las gafas (el HTML no se ve en VR)
@@ -428,7 +447,7 @@ async function suCamino(){
   }
   } finally { alive=false; }
   // El reloj se para en seco. Silencio.
-  heartbeat(0); ambience(0); rocking=false; beat('Silencio · el reloj se para'); await wait(2.2); await say('n25'); await wait(2.5);
+  heartbeat(0); ambience(0); rocking=false; beat('Silencio · el reloj se para'); await wait(2.2); await say('n44'); await wait(2.5);
   // Distracción: la radio chisporrotea a un lado… y luego cruje la mecedora al otro. Para ir de una a otra hay que pasar por la puerta.
   const door=dirOf(15,-6); let fired=false;
   const trap=()=>{ if(!fired && looking('A1-puerta',38)){ fired=true; return true; } return false; };
@@ -492,7 +511,10 @@ async function noMires(){
     runClip('B-nina',{rate:1.5}).catch(()=>{}); await wait(1.1); await animate(0.35,k=>{ P.m.uniforms.a.value=1-k; }); hideClip('B-nina',0.01);
     await wait(1.4); if(fails>=2) break; await say('n11'); await wait(0.8);
   }
-  await wait(1.5); whisper(2,0.3,0.45); await wait(2.5); await say('n12'); return saw;
+  await wait(1.5); whisper(2,0.3,0.45); await wait(2.5); await say('n12');
+  beat('Falsa calma'); ambience(0.45,[['chimenea',0.5]]); heartbeat(0); await wait(5.5+Math.random()*2);
+  { const d=dirOf(-170,-5); beat('Susto · el armario'); play('aporreo',1.3,d,1.8); play('impacto',1.1,d,1.8); play('h6',0.9); buzzHands(1,300); for(let i=0;i<5;i++) setTimeout(()=>play('golpe',0.6,d,2,1.4+Math.random()*0.3),150+i*90); await fadeB(0.55,0.08); await wait(0.15); await fadeB(1,0.6); }
+  await wait(2); return saw;
 }
 // Muestra un fotograma concreto de un clip, congelado
 function freezeAt(id,k){ const P=patches[id], tex=STILLS[id+k]; if(tex){ vids[id].pause(); P.m.uniforms.t.value=tex; P.m.uniforms.a.value=1; P.mesh.visible=true; return Promise.resolve(); } return freezeVid(id,k); }
@@ -565,7 +587,37 @@ const FUSET=(()=>{ const c=document.createElement('canvas'); c.width=128; c.heig
   g.fillStyle='rgba(235,228,210,0.95)'; g.beginPath(); g.roundRect(28,40,72,176,18); g.fill(); g.fillStyle='rgba(170,130,60,0.95)'; g.fillRect(36,18,56,30); g.fillRect(36,208,56,30);
   g.fillStyle='rgba(60,50,40,0.7)'; g.fillRect(58,70,12,116); g.strokeStyle='rgba(255,255,255,0.6)'; g.lineWidth=4; g.beginPath(); g.moveTo(40,60); g.lineTo(40,190); g.stroke(); return new THREE.CanvasTexture(c); })();
 function makeFuse(yaw,pitch){ const m=new THREE.SpriteMaterial({map:FUSET,transparent:true,depthTest:false,depthWrite:false,opacity:0}); const sp=new THREE.Sprite(m); const d=dirOf(yaw,pitch); sp.position.copy(d).multiplyScalar(3.2); sp.scale.set(0.16,0.32,1); sp.renderOrder=350; scene.add(sp);
-  const mk={sp,m,d,found:false}; movers.push({until:Infinity,f(){ if(!sp.parent){ this.until=0; return; } const s=THREE.MathUtils.smoothstep(headDir().dot(d),0.90,0.975); m.opacity=mk.found?0:0.95*s*U.fl.value; const gl=0.75+0.25*Math.sin(performance.now()*0.006); m.color.setRGB(gl,gl,gl); }}); return mk; }
+  const mk={sp,m,d,found:false}; movers.push({until:Infinity,f(){ if(!sp.parent){ this.until=0; return; } const s=THREE.MathUtils.smoothstep(aimDir().dot(d),0.90,0.975); m.opacity=mk.found?0:0.95*s*U.fl.value; const gl=0.75+0.25*Math.sin(performance.now()*0.006); m.color.setRGB(gl,gl,gl); }}); return mk; }
+
+// Candado de 3 números (Resident Evil): con el mando se apunta y se aprieta el gatillo; sin mando, mirando un momento la flecha
+function digitTex(){ const c=document.createElement('canvas'); c.width=128; c.height=160; return {c,g:c.getContext('2d'),t:new THREE.CanvasTexture(c)}; }
+function drawDigit(D,n,hi){ const g=D.g; g.clearRect(0,0,128,160); g.fillStyle='#1b1712'; g.fillRect(8,8,112,144); g.strokeStyle=hi?'#e0a050':'#6b5a40'; g.lineWidth=6; g.strokeRect(8,8,112,144); g.fillStyle='#e8dcc0'; g.font='bold 104px Georgia, serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(String(n),64,86); D.t.needsUpdate=true; }
+function arrowMesh(up){ const s=new THREE.Shape(); if(up){ s.moveTo(-0.05,-0.025); s.lineTo(0.05,-0.025); s.lineTo(0,0.035); } else { s.moveTo(-0.05,0.025); s.lineTo(0.05,0.025); s.lineTo(0,-0.035); } s.closePath();
+  const m=new THREE.Mesh(new THREE.ShapeGeometry(s),new THREE.MeshBasicMaterial({color:0x8a7350,transparent:true,depthTest:false})); m.renderOrder=502;
+  const hit=new THREE.Mesh(new THREE.PlaneGeometry(0.14,0.1),new THREE.MeshBasicMaterial({visible:false})); m.add(hit); m.userData.hit=hit; return m; }
+async function candado(dir,code){
+  const grp=new THREE.Group(); const yaw=Math.atan2(dir.x,-dir.z); grp.position.set(Math.sin(yaw)*1.5,-0.22,-Math.cos(yaw)*1.5); grp.lookAt(0,-0.22,0); scene.add(grp);
+  const plate=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.5),new THREE.MeshBasicMaterial({color:0x2a231b,transparent:true,opacity:0.92,depthTest:false})); plate.renderOrder=500; grp.add(plate);
+  const vals=[0,0,0], D=[], arrows=[];
+  for(let i=0;i<3;i++){ const dt=digitTex(); drawDigit(dt,0,false); const p=new THREE.Mesh(new THREE.PlaneGeometry(0.13,0.165),new THREE.MeshBasicMaterial({map:dt.t,transparent:true,depthTest:false})); p.renderOrder=501; p.position.set((i-1)*0.18,0,0.001); grp.add(p); D.push(dt);
+    const u=arrowMesh(true), dn=arrowMesh(false); u.position.set((i-1)*0.18,0.15,0.002); dn.position.set((i-1)*0.18,-0.15,0.002); grp.add(u); grp.add(dn); arrows.push({m:u,i,k:1},{m:dn,i,k:-1}); }
+  play('chirrido_metal',0.35,dir,1.5,1.3);
+  const rc=new THREE.Raycaster(); let hover=null, hoverT=0, armed=true, lastN=performance.now(); const t0=lastN; let h1=false,h2=false; const selT0=performance.now(); let lastSel=selT0; let done=false;
+  window.__lock={vals,code,arrows};
+  await until(()=>{ const n=performance.now(), dt=n-lastN; lastN=n;
+    const cr=ctrlRay(); if(cr) rc.set(cr.o,cr.d); else { const o=new THREE.Vector3(); viewCam().getWorldPosition(o); rc.set(o,headDir()); }
+    const hits=rc.intersectObjects(arrows.map(a=>a.m.userData.hit),false); const h=hits.length?arrows.find(a=>a.m.userData.hit===hits[0].object):null;
+    if(h!==hover){ if(hover) hover.m.material.color.setHex(0x8a7350); hover=h; hoverT=0; armed=true; if(h){ h.m.material.color.setHex(0xffc070); tick(dir); buzzHands(0.15,25); } } else if(h) hoverT+=dt;
+    let click=false; const sel=selQueue.filter(x=>x.t>lastSel); if(sel.length){ lastSel=sel[sel.length-1].t; if(h) click=true; }
+    if(!cr && h && armed && hoverT>800){ click=true; armed=false; setTimeout(()=>{ armed=true; hoverT=0; },500); }
+    if(click){ vals[h.i]=(vals[h.i]+h.k+10)%10; drawDigit(D[h.i],vals[h.i],true); setTimeout(()=>drawDigit(D[h.i],vals[h.i],false),200); play('golpe',0.25,dir,1.5,2.4); buzzHands(0.4,40); }
+    if(!h1 && n-t0>35000 && !voice){ h1=true; say('n46').catch(()=>{}); }
+    if(!h2 && n-t0>70000 && !voice){ h2=true; say('n47').catch(()=>{}); }
+    if(vals.every((v,i)=>v===code[i])) return true;
+    if(n-t0>120000){ code.forEach((c,i)=>{ vals[i]=c; drawDigit(D[i],c,false); }); return true; }
+    return false; },'Puzzle · candado','');
+  play('chirrido_metal',0.6,dir,1.5,0.9); play('golpe',0.9,dir,1.5,0.7); chime(dir,1.2); buzzHands(0.7,120);
+  await wait(0.8); scene.remove(grp); window.__lock=null; }
 async function actSotano(){
   resetScene('sotano_a',-20); ambience(0.3,[['drone',0.3],['nevera',0.3,dirOf(94,-10),3]]); loop(()=>drip(dirOf(25,-40)),1700);
   await fadeB(1,3); beat('Acto 5 · El sótano'); await wait(3); await say('n36'); await wait(2.5);
@@ -585,23 +637,27 @@ async function actSotano(){
       if(n>=nextStep && si<12){ play('golpe',0.18+si*0.035,dirOf(70,10-si*2.2),3.6-si*0.18,0.95+Math.random()*0.1); play('chirrido',0.12,stairs,3.5,1.7+Math.random()*0.2); si++; nextStep=n+2600-si*90; heartbeat(Math.min(118,72+si*4)); }
       if(n>=nextEv){ nextEv=n+9000+Math.random()*4000; const k=ev++%3; if(k===0) creak(dirOf(2,-5),2,0.8); else if(k===1){ const b=headDir().multiplyScalar(-1); b.y=0.05; play('respiro',0.8,b.normalize(),0.6); } else play('unas',0.7,dirOf(-60,-10),2.5); }
       // la figura del pasillo: aparece cuando ya has encontrado uno y la linterna pasa por el pasillo; desaparece en cuanto apartas la luz
-      if(found>=1 && ghost===0 && lookingDir(corr,35)){ ghost=1; showClip('D-pasillo'); runClip('D-pasillo').catch(()=>{}); play('grave2',0.5); }
-      else if(ghost===1 && !lookingDir(corr,30)){ ghost=2; hideClip('D-pasillo',0.05); }
+      if(found>=1 && ghost===0 && aimAt(corr,35)){ ghost=1; showClip('D-pasillo'); runClip('D-pasillo').catch(()=>{}); play('grave2',0.5); }
+      else if(ghost===1 && !aimAt(corr,30)){ ghost=2; hideClip('D-pasillo',0.05); }
       if(n-lastFound>12000 && n>nextHint){ nextHint=n+6000; const ks=Object.keys(left); if(ks.length){ const d=left[ks[0]]; play('chirrido_metal',0.22,d,2.2,2.6); setTimeout(()=>play('golpe',0.15,d,2.2,3.0),180); } }
-      let hit=null; for(const k in left) if(lookingDir(left[k],7)) hit=k; if(hit!==null&&hit===cand) acc+=n-last; else { cand=hit; acc=0; } last=n;
+      let hit=null; for(const k in left) if(aimAt(left[k],7)) hit=k; if(hit!==null&&hit===cand) acc+=n-last; else { cand=hit; acc=0; } last=n;
+      if(hit!==null && triggerSince(n-250)){ got=hit; lastFound=n; return true; }
       if(cand!==null&&acc>=450){ got=cand; lastFound=n; return true; } return n-t0>90000; },'Puzzle · busca los fusibles ('+found+'/3)','');
     if(got===null) break;
     const mk=marks[got]; mk.found=true; found++; chime(mk.d,1+found*0.15); play('chirrido_metal',0.3,mk.d,2,2.2);
     if(found===1) say('n38').catch(()=>{}); if(found===2) say('n39').catch(()=>{});
   }
   if(ghost===1) hideClip('D-pasillo',0.05);
-  heartbeat(0); await say('n40');
-  // Ponerlos en la caja: mirarla un momento. Vuelve la luz… y está ahí.
-  const box=dirOf(-112,-2); { let nx=0; const t=performance.now(); let acc=0,last=t;
-    await until(()=>{ const n=performance.now(); if(n>=nx){ nx=n+3500; glow(box,1.8,1.2,0.8); play('chirrido_metal',0.25,box,2.5,1.4); } if(lookingDir(box,16)) acc+=n-last; else acc=0; last=n; return acc>1100||n-t>30000; },'Puzzle · pon los fusibles (mira la caja)',''); }
-  play('golpe',1.3,box,2,0.6); play('electrico',0.6,box,2); await wait(0.5);
-  U.fl.value=0; U.b.value=1; beat('Susto · vuelve la luz'); play('grito',1.3,box,1.0); scare(1); await runClip('D-fusibles',{rate:1.1});
-  await fadeB(0,0.5); hideClip('D-fusibles',0.01); stopLoops(); await wait(0.8); rumble(); await wait(2); await say('n41'); await wait(1);
+  heartbeat(0); const box=dirOf(-112,-2); await wait(0.8); await say('n45');
+  await candado(box,[3,1,5]); heartbeat(0); await say('n40');
+  play('golpe',1.1,box,2,0.6); await wait(0.9);
+  // La linterna falla: tic… tic… y se apaga. Oscuridad. Se enciende… y está pegada a ti. Se apaga. Vuelve la luz y no hay nada.
+  beat('La linterna falla'); for(let j=0;j<4;j++){ play('electrico',0.25,headDir(),0.4); U.b.value=0; await wait(0.07+Math.random()*0.12); U.b.value=1; await wait(0.18+Math.random()*0.35); }
+  play('chispazo',0.4,headDir(),0.4); U.b.value=0; heartbeat(0); ambience(0); beat('Oscuridad total'); await wait(2.4);
+  placeInView('D-cara'); U.b.value=1; beat('Susto · la linterna se enciende'); play('h3',1.2); play('impacto',1.2); play('grito',1.2,headDir(),0.6); buzzHands(1,450);
+  runClip('D-cara').catch(()=>{}); await wait(1.15); U.b.value=0; hideClip('D-cara',0.01); await wait(1.8);
+  beat('Vuelve la luz… no hay nada'); play('electrico',0.5,dirOf(-5,40),2); U.fl.value=0; for(let j=0;j<3;j++){ U.b.value=0.6; await wait(0.08); U.b.value=0.1; await wait(0.12); } U.b.value=1; ambience(0.2,[['drone',0.2]]);
+  await wait(4); stopLoops(); await fadeB(0,1.2); await wait(0.6); await say('n41'); await wait(1);
 }
 async function act5(){
   resetScene('dormitorio_a',60,[1.25,0.3,0.24]); if(cruz.root){ cruz.root.visible=true; cruz.sp.visible=false; } ambience(0.3,[['maligno',0.35],['drone',0.3]]); heartbeat(62);
